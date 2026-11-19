@@ -2,6 +2,8 @@
 
 Aplicação web educacional interativa, **100% gratuita, open-source (MIT) e sem necessidade de login ou cadastro**, criada em **TypeScript + Vite** para treinamento interno e aprendizado prático de redes de computadores.
 
+> **Acesso online (GitHub Pages):** https://leandrop2103.github.io/netlab-protocol-visualizer/
+
 ---
 
 ## O que o projeto oferece
