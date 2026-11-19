@@ -623,20 +623,21 @@ kbd {
   fill: #34d399;
 }
 
-.topo-node.is-active .iso-device {
-  filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.45));
+.topo-node.is-active .iso-face-top {
+  stroke: #93c5fd;
+  stroke-width: 1.5;
 }
 
 .topo-node-name {
   fill: var(--text-primary);
-  font-size: 11.5px;
+  font-size: 12.5px;
   font-weight: 700;
 }
 
 .topo-node-sub {
   fill: var(--text-secondary);
   font-family: var(--font-mono);
-  font-size: 9.8px;
+  font-size: 10.5px;
 }
 
 .topo-callout-text {
@@ -644,8 +645,13 @@ kbd {
   font-weight: 700;
 }
 
+.topo-pkt-pill {
+  will-change: transform, opacity;
+}
+
 .topo-pkt-rect {
-  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.35));
+  stroke: rgba(255, 255, 255, 0.28);
+  stroke-width: 1;
 }
 
 .topo-pkt-pill.is-secondary .topo-pkt-rect {

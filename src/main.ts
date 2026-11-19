@@ -530,7 +530,7 @@ class NetLabApp {
       this.playTimer = null;
     }
     if (!this.state.isPlaying) return;
-    const delay = Math.round(2400 / Math.max(0.25, this.state.speed));
+    const delay = Math.round(2650 / Math.max(0.25, this.state.speed));
     this.playTimer = window.setTimeout(() => {
       if (!this.state.isPlaying) return;
       if (this.state.stepIndex < this.scenario.steps.length - 1) {

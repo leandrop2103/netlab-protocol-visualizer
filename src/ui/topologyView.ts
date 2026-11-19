@@ -67,7 +67,7 @@ function appendIsoBox(
 }
 
 function createIsometricDevice(kind: NodeKind): SVGGElement {
-  const g = el('g', { class: 'iso-device' });
+  const g = el('g', { class: 'iso-device', transform: 'scale(1.42)' });
 
   // Sombra elíptica isométrica na base
   g.appendChild(el('ellipse', { cx: 0, cy: 14, rx: 34, ry: 16, class: 'iso-shadow' }));
@@ -280,7 +280,7 @@ export class TopologyView {
       'aria-label': `Mapa isométrico de rede do protocolo ${scenario.name}`,
     });
 
-    // Defs: grade isométrica blueprint + filtro de brilho suave
+    // Defs: grade isométrica blueprint (sem filtros feGaussianBlur pesados para manter 60fps constantes)
     const defs = el('defs');
     const isoGrid = el('pattern', {
       id: 'netlab-iso-grid',
@@ -297,14 +297,6 @@ export class TopologyView {
       })
     );
     defs.appendChild(isoGrid);
-
-    const glow = el('filter', { id: 'netlab-glow', x: '-40%', y: '-40%', width: '180%', height: '180%' });
-    glow.appendChild(el('feGaussianBlur', { stdDeviation: 3.5, result: 'blur' }));
-    const merge = el('feMerge');
-    merge.appendChild(el('feMergeNode', { in: 'blur' }));
-    merge.appendChild(el('feMergeNode', { in: 'SourceGraphic' }));
-    glow.appendChild(merge);
-    defs.appendChild(glow);
     svg.appendChild(defs);
 
     // Fundo com grade isométrica
@@ -392,17 +384,17 @@ export class TopologyView {
 
       // Anel de destaque isométrico na base quando o nó está ativo
       if (isActive) {
-        g.appendChild(el('ellipse', { cx: 0, cy: 14, rx: 40, ry: 20, class: 'iso-active-ring' }));
+        g.appendChild(el('ellipse', { cx: 0, cy: 19, rx: 56, ry: 27, class: 'iso-active-ring' }));
       }
 
       g.appendChild(createIsometricDevice(nodeId));
 
-      // Rótulos limpos abaixo da base 3D
-      const nameText = el('text', { x: 0, y: 45, 'text-anchor': 'middle', class: 'topo-node-name' });
+      // Rótulos limpos abaixo da base 3D ampliada
+      const nameText = el('text', { x: 0, y: 56, 'text-anchor': 'middle', class: 'topo-node-name' });
       nameText.textContent = name;
       g.appendChild(nameText);
 
-      const subText = el('text', { x: 0, y: 60, 'text-anchor': 'middle', class: 'topo-node-sub' });
+      const subText = el('text', { x: 0, y: 71, 'text-anchor': 'middle', class: 'topo-node-sub' });
       subText.textContent = subtitle;
       g.appendChild(subText);
 
@@ -410,14 +402,14 @@ export class TopologyView {
     }
     svg.appendChild(nodesGroup);
 
-    // Callout do passo (posicionado acima do dispositivo 3D sem sobrepor texto)
+    // Callout do passo (posicionado acima do dispositivo 3D ampliado sem sobrepor texto)
     if (activeStep?.callout) {
       const targetNode = NETWORK_NODES[activeStep.callout.node];
       if (targetNode) {
         const toneColor = TONE_HEX[activeStep.callout.tone];
         const textLen = Math.min(350, Math.max(175, activeStep.callout.text.length * 7.1 + 24));
         const cx = Math.max(textLen / 2 + 14, Math.min(1000 - textLen / 2 - 14, targetNode.x));
-        const cy = targetNode.y < 140 ? targetNode.y + 82 : targetNode.y - 54;
+        const cy = targetNode.y < 145 ? targetNode.y + 92 : targetNode.y - 68;
 
         const calloutG = el('g', { transform: `translate(${cx}, ${cy})`, class: 'topo-callout' });
         calloutG.appendChild(
@@ -481,36 +473,44 @@ export class TopologyView {
     const color = TONE_HEX[pkt.tone];
     const g = el('g', { class: `topo-pkt-pill ${secondary ? 'is-secondary' : ''}` });
 
-    // Orbe luminoso que desliza exatamente sobre o cabo
+    // Halo leve sem filtro SVG (mantém 60fps lisos durante toda a trajetória)
     g.appendChild(
       el('circle', {
         cx: 0,
         cy: 0,
-        r: secondary ? 5.5 : 7,
+        r: secondary ? 11 : 14,
         fill: color,
-        filter: 'url(#netlab-glow)',
+        opacity: 0.24,
       })
     );
-    g.appendChild(el('circle', { cx: 0, cy: 0, r: 2.5, fill: '#ffffff' }));
+    g.appendChild(
+      el('circle', {
+        cx: 0,
+        cy: 0,
+        r: secondary ? 6 : 7.5,
+        fill: color,
+      })
+    );
+    g.appendChild(el('circle', { cx: 0, cy: 0, r: 2.8, fill: '#ffffff' }));
 
     // Etiqueta compacta flutuando acima do orbe (para não cobrir os textos dos nós)
     if (!secondary) {
       const labelText = pkt.encrypted ? `🔒 ${pkt.label}` : pkt.label;
-      const width = Math.max(76, Math.min(185, labelText.length * 6.8 + 18));
+      const width = Math.max(82, Math.min(195, labelText.length * 7 + 20));
 
       g.appendChild(
         el('rect', {
           x: -width / 2,
-          y: -34,
+          y: -38,
           width,
-          height: 22,
-          rx: 6,
+          height: 23,
+          rx: 7,
           fill: color,
           class: 'topo-pkt-rect',
         })
       );
 
-      const txt = el('text', { x: 0, y: -19.5, 'text-anchor': 'middle', class: 'topo-pkt-text' });
+      const txt = el('text', { x: 0, y: -23, 'text-anchor': 'middle', class: 'topo-pkt-text' });
       txt.textContent = labelText;
       g.appendChild(txt);
     }
@@ -545,19 +545,26 @@ export class TopologyView {
       lostMark?: SVGGElement;
     }
 
+    interface AnimatedRipple {
+      el: SVGEllipseElement;
+      delayMs: number;
+      durationMs: number;
+    }
+
     const tracks: AnimatedTrack[] = [];
-    const baseDuration = 1150 / Math.max(0.25, speed);
+    const ripples: AnimatedRipple[] = [];
+    const baseDuration = 1450 / Math.max(0.25, speed);
 
     packets.forEach((pkt, idx) => {
-      const mainPoints = pkt.path.map((n) => ({ x: NETWORK_NODES[n].x, y: NETWORK_NODES[n].y + 8 }));
+      const mainPoints = pkt.path.map((n) => ({ x: NETWORK_NODES[n].x, y: NETWORK_NODES[n].y + 10 }));
       const marker = this.createPacketMarker(pkt, onInspect, false);
       layer.appendChild(marker);
 
       let lostMark: SVGGElement | undefined;
       if (pkt.lost) {
         lostMark = el('g', { class: 'topo-lost-mark', opacity: 0 });
-        lostMark.appendChild(el('circle', { cx: 0, cy: 0, r: 14, fill: '#f43f5e' }));
-        const xTxt = el('text', { x: 0, y: 5, 'text-anchor': 'middle', fill: '#fff', 'font-size': 14, 'font-weight': 700 });
+        lostMark.appendChild(el('circle', { cx: 0, cy: 0, r: 15, fill: '#f43f5e' }));
+        const xTxt = el('text', { x: 0, y: 5, 'text-anchor': 'middle', fill: '#fff', 'font-size': 15, 'font-weight': 700 });
         xTxt.textContent = '✕';
         lostMark.appendChild(xTxt);
         layer.appendChild(lostMark);
@@ -567,27 +574,30 @@ export class TopologyView {
         pill: marker,
         points: mainPoints,
         lost: Boolean(pkt.lost),
-        delayMs: idx * (baseDuration * 0.45),
+        delayMs: idx * (baseDuration * 0.42),
         durationMs: baseDuration,
         lostMark,
       });
 
-      // Fan-out de Broadcast a partir do Switch
+      // Fan-out de Broadcast a partir do Switch com onda expansiva suave
       if (pkt.broadcastTargets && pkt.path.length >= 2) {
         const hub = NETWORK_NODES[pkt.path[1]];
-        // Onda isométrica de broadcast saindo do switch
         const ripple = el('ellipse', {
           cx: hub.x,
-          cy: hub.y + 10,
-          rx: 56,
-          ry: 28,
+          cy: hub.y + 14,
+          rx: 28,
+          ry: 14,
           fill: 'none',
           stroke: TONE_HEX[pkt.tone],
-          'stroke-width': 1.5,
-          'stroke-dasharray': '4 4',
-          opacity: 0.65,
+          'stroke-width': 2,
+          opacity: 0,
         });
         layer.appendChild(ripple);
+        ripples.push({
+          el: ripple,
+          delayMs: idx * (baseDuration * 0.42) + baseDuration * 0.36,
+          durationMs: baseDuration * 0.65,
+        });
 
         for (const targetId of pkt.broadcastTargets) {
           const target = NETWORK_NODES[targetId];
@@ -596,12 +606,12 @@ export class TopologyView {
           tracks.push({
             pill: copyOrb,
             points: [
-              { x: hub.x, y: hub.y + 8 },
-              { x: target.x, y: target.y + 8 },
+              { x: hub.x, y: hub.y + 10 },
+              { x: target.x, y: target.y + 10 },
             ],
             lost: false,
-            delayMs: idx * (baseDuration * 0.45) + baseDuration * 0.42,
-            durationMs: baseDuration * 0.58,
+            delayMs: idx * (baseDuration * 0.42) + baseDuration * 0.38,
+            durationMs: baseDuration * 0.62,
           });
         }
       }
@@ -610,12 +620,12 @@ export class TopologyView {
     const placeAt = (track: AnimatedTrack, progress: number): void => {
       const effectiveProgress = track.lost ? Math.min(0.62, progress) : progress;
       const pos = interpolatePolyline(track.points, effectiveProgress);
-      track.pill.setAttribute('transform', `translate(${pos.x.toFixed(1)}, ${pos.y.toFixed(1)})`);
+      track.pill.setAttribute('transform', `translate(${pos.x.toFixed(2)}, ${pos.y.toFixed(2)})`);
       if (track.lost && track.lostMark) {
         if (progress >= 0.62) {
           track.pill.setAttribute('opacity', '0.5');
           track.lostMark.setAttribute('opacity', '1');
-          track.lostMark.setAttribute('transform', `translate(${pos.x.toFixed(1)}, ${(pos.y - 46).toFixed(1)})`);
+          track.lostMark.setAttribute('transform', `translate(${pos.x.toFixed(2)}, ${(pos.y - 50).toFixed(2)})`);
         } else {
           track.pill.setAttribute('opacity', '1');
           track.lostMark.setAttribute('opacity', '0');
@@ -630,6 +640,9 @@ export class TopologyView {
       return;
     }
 
+    // Smooth ease-in-out sine para aceleração e desaceleração naturais
+    const easeInOutSine = (t: number): number => -(Math.cos(Math.PI * t) - 1) / 2;
+
     const startTime = performance.now();
     const tick = (now: number): void => {
       let allDone = true;
@@ -640,14 +653,32 @@ export class TopologyView {
           allDone = false;
           continue;
         }
-        tr.pill.setAttribute('opacity', '1');
         const raw = Math.min(1, elapsed / tr.durationMs);
-        const eased = 1 - Math.pow(1 - raw, 3);
-        // Para pacotes entregues, repousa a ~74% do trajeto para manter o rótulo super legível
-        const finalT = tr.lost ? eased : eased * 0.74;
+        // Fade-in suave nos primeiros 12% do trajeto
+        const fade = Math.min(1, raw / 0.12);
+        tr.pill.setAttribute('opacity', fade.toFixed(2));
+        const eased = easeInOutSine(raw);
+        const finalT = tr.lost ? eased : eased * 0.75;
         placeAt(tr, finalT);
         if (raw < 1) allDone = false;
       }
+
+      for (const rp of ripples) {
+        const elapsed = now - startTime - rp.delayMs;
+        if (elapsed < 0) {
+          rp.el.setAttribute('opacity', '0');
+          allDone = false;
+          continue;
+        }
+        const raw = Math.min(1, elapsed / rp.durationMs);
+        const rx = 28 + raw * 85;
+        const ry = 14 + raw * 42;
+        rp.el.setAttribute('rx', rx.toFixed(1));
+        rp.el.setAttribute('ry', ry.toFixed(1));
+        rp.el.setAttribute('opacity', ((1 - raw) * 0.8).toFixed(2));
+        if (raw < 1) allDone = false;
+      }
+
       if (!allDone) {
         this.rafId = requestAnimationFrame(tick);
       } else {
