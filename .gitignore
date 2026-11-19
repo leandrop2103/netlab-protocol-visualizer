@@ -1,0 +1,14 @@
+# Dependências e builds
+node_modules/
+dist/
+*.local
+
+# Cópia local de referência (NÃO versionar)
+_referencia_local/
+
+# Logs e editor
+*.log
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
